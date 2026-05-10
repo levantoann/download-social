@@ -30,18 +30,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // --- 2. XỬ LÝ YOUTUBE ---
+    // --- 2. XỬ LÝ YOUTUBE (Đã fix link ứng dụng youtu.be) ---
     if (isYouTube) {
       const ytId = extractYoutubeId(url);
       
-      // Kiểm tra nếu không lấy được ID thì báo lỗi ngay
       if (!ytId) {
-        return NextResponse.json({ error: "Link YouTube không hợp lệ" }, { status: 400 });
+        return NextResponse.json({ error: "Link YouTube không hợp lệ hoặc không tìm thấy ID" }, { status: 400 });
       }
 
       return NextResponse.json({
         title: "YouTube Video Ready",
-        // Sửa thumbnail sang hqdefault để video nào cũng hiện được ảnh
         thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
         isTikTok: false,
         formats: [
@@ -71,12 +69,15 @@ export async function POST(req: Request) {
   }
 }
 
-// Hàm lấy ID YouTube chính xác hơn
+// Hàm lấy ID YouTube tối ưu nhất
 function extractYoutubeId(url: string) {
-  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+  // Regex này xử lý được: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, và các tham số ?si=, ?t=
+  const regExp = /^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/;
   const match = url.match(regExp);
-  if (match && match[7] && match[7].length === 11) {
-    return match[7];
+  
+  // Trả về ID nếu tìm thấy và đúng 11 ký tự
+  if (match && match[1] && match[1].length === 11) {
+    return match[1];
   }
-  return null; // Trả về null thay vì chuỗi rỗng để dễ kiểm tra lỗi
+  return null;
 }

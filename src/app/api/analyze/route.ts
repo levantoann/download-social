@@ -1,77 +1,82 @@
 import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
-import path from 'path';
 
 export async function POST(req: Request) {
   try {
     const { url } = await req.json();
-    if (!url) return NextResponse.json({ error: "URL không được để trống" }, { status: 400 });
-
-    const rootPath = process.cwd();
-    const ytDlpPath = path.join(rootPath, 'yt-dlp.exe');
-    // Đường dẫn tới thư mục bin của ffmpeg
-    const ffmpegPath = "D:/ffmpeg/ffmpeg-2026-01-26-git-fe0813d6e2-essentials_build/ffmpeg-2026-01-26-git-fe0813d6e2-essentials_build/bin";
-
-    // Lấy metadata JSON
-    const command = `"${ytDlpPath}" --ffmpeg-location "${ffmpegPath}" -j "${url}"`;
-    const stdout = execSync(command, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 50 });
-    const info = JSON.parse(stdout);
+    if (!url) return NextResponse.json({ error: "Vui lòng nhập URL" }, { status: 400 });
 
     const isTikTok = url.includes('tiktok.com');
+    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
 
-    // 1. Lọc lấy các định dạng video
-    let allFormats = (info.formats || [])
-      .filter((f: any) => f.vcodec !== 'none') // Lấy tất cả có hình (để sau này ghép tiếng sau)
-      .map((f: any) => {
-        let label = `${f.height}p`;
-        if (f.height >= 2160) label = `4K Ultra HD (${f.height}p)`;
-        else if (f.height >= 1440) label = `2K Quad HD (${f.height}p)`;
-        else if (f.height >= 1080) label = `Full HD 1080p`;
-        else if (f.height >= 720) label = `HD 720p`;
-
-        return {
-          id: f.format_id,
-          quality: label,
-          height: f.height || 0,
-          filesize: f.filesize ? (f.filesize / (1024 * 1024)).toFixed(1) + ' MB' : 'Dung lượng cao',
-          isNoLogo: false // Mặc định là bản thường
-        };
-      })
-      .filter((f: any) => f.height > 0)
-      // Loại bỏ trùng lặp độ phân giải
-      .reduce((acc: any[], current: any) => {
-        const x = acc.find(item => item.height === current.height);
-        if (!x) return acc.concat([current]);
-        return acc;
-      }, [])
-      .sort((a: any, b: any) => b.height - a.height);
-
-    // 2. NẾU LÀ TIKTOK: Chèn thêm một tùy chọn "Không Logo" lên đầu danh sách
+    // --- 1. XỬ LÝ TIKTOK ---
     if (isTikTok) {
-      const noLogoOption = {
-        id: 'best', // yt-dlp sẽ tự chọn bản tốt nhất khi tải
-        quality: 'Tải không Logo (Gốc)',
-        height: 10000, // Để nó nhảy lên đầu khi sort
-        filesize: 'N/A',
-        isNoLogo: true
-      };
-      allFormats = [noLogoOption, ...allFormats];
+      const response = await fetch(`https://www.tikwm.com/api/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ url: url, hd: "1" }),
+      });
+      const resData = await response.json();
+      if (resData.code === 0) {
+        return NextResponse.json({
+          title: resData.data.title || "TikTok Video",
+          thumbnail: resData.data.cover.startsWith('http') ? resData.data.cover : `https://www.tikwm.com${resData.data.cover}`,
+          isTikTok: true,
+          formats: [{
+            id: 'no-logo',
+            quality: 'Tải không Logo',
+            downloadUrl: resData.data.play.startsWith('http') ? resData.data.play : `https://www.tikwm.com${resData.data.play}`
+          }]
+        });
+      }
     }
 
-    return NextResponse.json({
-      title: info.title,
-      thumbnail: info.thumbnail,
-      duration: info.duration_string,
-      formats: allFormats,
-      isTikTok: isTikTok,
-      originalUrl: url
-    });
+    // --- 2. XỬ LÝ YOUTUBE ---
+    if (isYouTube) {
+      const ytId = extractYoutubeId(url);
+      
+      // Kiểm tra nếu không lấy được ID thì báo lỗi ngay
+      if (!ytId) {
+        return NextResponse.json({ error: "Link YouTube không hợp lệ" }, { status: 400 });
+      }
 
-  } catch (error: any) {
-    console.error("❌ LỖI CHI TIẾT:", error.stdout); // Xem nhật ký của yt-dlp trả về
-    return NextResponse.json({ 
-      success: false, 
-      error: "TikTok đã chặn truy cập hoặc link video không tồn tại." 
-    }, { status: 500 });
+      return NextResponse.json({
+        title: "YouTube Video Ready",
+        // Sửa thumbnail sang hqdefault để video nào cũng hiện được ảnh
+        thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        isTikTok: false,
+        formats: [
+          {
+            id: 'yt-1080',
+            quality: 'Video Full HD (1080p)',
+            downloadUrl: `https://api.vevioz.com/api/button/videos/${ytId}`
+          },
+          {
+            id: 'yt-720',
+            quality: 'Video HD (720p)',
+            downloadUrl: `https://api.vevioz.com/api/button/videos/${ytId}`
+          },
+          {
+            id: 'yt-mp3',
+            quality: 'Tải Nhạc MP3',
+            downloadUrl: `https://api.vevioz.com/api/button/mp3/${ytId}`
+          }
+        ]
+      });
+    }
+
+    return NextResponse.json({ error: "Nền tảng này hiện chưa hỗ trợ" }, { status: 400 });
+
+  } catch (error) {
+    return NextResponse.json({ error: "Lỗi kết nối server" }, { status: 500 });
+  }
 }
+
+// Hàm lấy ID YouTube chính xác hơn
+function extractYoutubeId(url: string) {
+  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+  const match = url.match(regExp);
+  if (match && match[7] && match[7].length === 11) {
+    return match[7];
+  }
+  return null; // Trả về null thay vì chuỗi rỗng để dễ kiểm tra lỗi
 }

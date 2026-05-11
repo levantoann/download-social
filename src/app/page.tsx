@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Download, Search, Video, Music, Loader2, Zap, ShieldCheck, CheckCircle } from 'lucide-react';
+import { Download, Search, Video, Music, Loader2, Zap, ShieldCheck, CheckCircle, Copy, PlayCircle, Save, X, ClipboardPaste } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -10,6 +10,16 @@ export default function Home() {
   const [downloading, setDownloading] = useState(false);
 
   const SHOPEE_LINK = "https://s.shopee.vn/4qCMDS5ean";
+
+  // Hàm xử lý dán nhanh từ Clipboard
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setUrl(text);
+    } catch (err) {
+      alert("Không thể truy cập khay nhớ tạm. Vui lòng dán thủ công.");
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!url) return alert("Vui lòng dán link video!");
@@ -38,9 +48,7 @@ export default function Home() {
 
     setDownloading(true);
     try {
-      // Vì đã bỏ YouTube, ta gửi trực tiếp link từ TikWM vào API download để Proxy tải về
       const proxyUrl = `/api/download?url=${encodeURIComponent(downloadUrl)}&name=${encodeURIComponent(fileName)}`;
-      
       const link = document.createElement('a');
       link.href = proxyUrl;
       link.setAttribute('download', fileName);
@@ -51,7 +59,6 @@ export default function Home() {
       console.error("Lỗi tải xuống:", err);
       window.open(downloadUrl, '_blank'); 
     } finally {
-      // Đợi một chút để trải nghiệm người dùng mượt mà hơn trước khi đóng overlay
       setTimeout(() => setDownloading(false), 2000);
     }
   };
@@ -73,17 +80,42 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar Optimized */}
         <div className="relative group max-w-2xl mx-auto mb-10 md:mb-16">
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-10 group-focus-within:opacity-30 transition duration-500"></div>
           <div className="relative flex flex-col sm:flex-row gap-2 bg-[#0f0f12] p-2 rounded-2xl border border-white/5 backdrop-blur-xl">
-            <input
-              className="flex-1 bg-transparent p-3 md:p-4 outline-none text-base md:text-lg placeholder:text-gray-600"
-              placeholder="Dán link TikTok tại đây..."
-              value={url} 
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-            />
+            <div className="flex-1 relative flex items-center">
+              <input
+                className="w-full bg-transparent p-3 md:p-4 pr-20 outline-none text-base md:text-lg placeholder:text-gray-600"
+                placeholder="Dán link TikTok tại đây..."
+                value={url} 
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+              />
+              
+              {/* Nút Xóa/Dán nhanh nằm trong Input */}
+              <div className="absolute right-2 flex items-center gap-1">
+                {url ? (
+                  <button 
+                    onClick={() => setUrl('')}
+                    className="p-2 hover:bg-white/10 rounded-lg text-gray-400 transition-colors"
+                    title="Xóa nhanh"
+                  >
+                    <X size={18} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handlePaste}
+                    className="p-2 hover:bg-white/10 rounded-lg text-blue-400 transition-colors flex items-center gap-1"
+                    title="Dán nhanh"
+                  >
+                    <ClipboardPaste size={18} />
+                    <span className="text-[10px] font-bold hidden md:inline">DÁN</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             <button
               onClick={handleAnalyze}
               disabled={loading}
@@ -95,10 +127,29 @@ export default function Home() {
           </div>
         </div>
 
+        {/* --- Phần hướng dẫn giữ nguyên --- */}
+        {!videoInfo && !loading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {[
+              { icon: <Copy className="text-blue-400" />, title: "Bước 1", desc: "Sao chép liên kết video TikTok bạn muốn tải." },
+              { icon: <PlayCircle className="text-purple-400" />, title: "Bước 2", desc: "Dán liên kết vào ô tìm kiếm phía trên." },
+              { icon: <Save className="text-green-400" />, title: "Bước 3", desc: "Chọn định dạng và tải video không logo." }
+            ].map((step, idx) => (
+              <div key={idx} className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl text-center">
+                <div className="w-12 h-12 bg-white/[0.05] rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+                  {step.icon}
+                </div>
+                <h3 className="text-white font-bold text-sm mb-2 uppercase tracking-widest">{step.title}</h3>
+                <p className="text-gray-500 text-xs leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* --- Kết quả phân tích giữ nguyên --- */}
         {videoInfo && (
           <div className="bg-[#0f0f12] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl animate-in fade-in zoom-in duration-500 relative">
             <div className="flex flex-col md:flex-row">
-              {/* Thumbnail Area */}
               <div className="w-full md:w-72 lg:w-80 relative group shrink-0 border-b md:border-b-0 md:border-r border-white/5 aspect-video md:aspect-auto">
                 <img
                   src={videoInfo.thumbnail}
@@ -109,14 +160,12 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f12] via-transparent to-transparent md:hidden" />
               </div>
 
-              {/* Download Content */}
               <div className="flex-1 p-5 md:p-8">
                 <h2 className="font-bold text-lg md:text-xl line-clamp-2 mb-6 text-gray-100 leading-tight md:leading-snug">
                   {videoInfo.title}
                 </h2>
                 
                 <div className="space-y-6">
-                  {/* MP3 Section */}
                   <div>
                     <p className="text-[9px] md:text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
                       <Music size={12} /> Nhạc nền (MP3)
@@ -131,13 +180,11 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* MP4 Section */}
                   <div className="space-y-4">
                     <p className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
                       <Video size={12} /> Tùy chọn Video
                     </p>
                     
-                    {/* TIKTOK NO LOGO VIP */}
                     <button
                       onClick={() => handleDownload(videoInfo.downloadUrl, `${videoInfo.title}_no_logo.mp4`, true)}
                       disabled={downloading}
@@ -153,7 +200,6 @@ export default function Home() {
                       <Zap size={18} className="group-hover:scale-125 transition-transform shrink-0" fill="currentColor" />
                     </button>
 
-                    {/* DANH SÁCH ĐỘ PHÂN GIẢI KHÁC */}
                     <div className="grid grid-cols-1 gap-2 md:gap-3 max-h-[250px] md:max-h-[300px] overflow-y-auto pr-1 md:pr-2 custom-scrollbar">
                       {videoInfo.formats?.filter((f: any) => !f.id.includes('audio')).map((f: any, i: number) => (
                         <button
@@ -182,13 +228,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Progress Overlay */}
             {downloading && (
               <div className="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in duration-300 p-6 text-center">
                 <div className="w-12 h-12 md:w-16 md:h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4" />
                 <h3 className="text-base md:text-lg font-black tracking-[0.1em] md:tracking-[0.2em] text-white uppercase italic">Đang tải file về máy</h3>
                 <p className="text-gray-500 text-[9px] md:text-[10px] mt-2 font-medium uppercase leading-relaxed max-w-xs">
-                  Vui lòng không đóng trình duyệt, tiến trình sẽ hoàn tất sau giây lát...
+                  Vui lòng không đóng trình duyệt...
                 </p>
               </div>
             )}

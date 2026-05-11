@@ -1,7 +1,7 @@
 "use client";
 
 // 1. Dùng react-icons cho các logo mạng xã hội
-import { FaFacebook, FaGithub, FaEnvelope } from 'react-icons/fa'; 
+import { FaFacebook, FaTiktok, FaEnvelope } from 'react-icons/fa'; 
 
 // 2. Dùng lucide-react cho các icon chức năng
 import { ShieldCheck, Info, ExternalLink } from 'lucide-react';
@@ -47,13 +47,13 @@ export default function Footer() {
         <div className="flex flex-col md:items-end">
           <h3 className="text-white font-semibold mb-4">Kết nối với chúng tôi</h3>
           <div className="flex space-x-4 mb-4">
-            <a href="#" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-[#1877F2] hover:bg-white transition-all duration-300">
+            <a href="https://www.facebook.com/LeVanToann" target="_blank" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-[#1877F2] hover:bg-white transition-all duration-300">
                <FaFacebook size={20} />
             </a>
-            <a href="#" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-white hover:bg-black transition-all duration-300">
-               <FaGithub size={20} />
+            <a href="https://www.tiktok.com/@lvtoan27_" target="_blank" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-white hover:bg-black transition-all duration-300">
+               <FaTiktok size={20} />
             </a>
-            <a href="#" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-[#EA4335] hover:bg-white transition-all duration-300">
+            <a href="mailto:checkson277@gmail.com" className="p-2.5 bg-slate-800/50 rounded-xl hover:text-[#EA4335] hover:bg-white transition-all duration-300">
                <FaEnvelope size={20} />
             </a>
           </div>

@@ -6,76 +6,54 @@ export async function POST(req: Request) {
     if (!url) return NextResponse.json({ error: "Vui lòng nhập URL!" }, { status: 400 });
 
     const cleanUrl = url.trim();
-    const isTikTok = cleanUrl.includes('tiktok.com');
-    const isYouTube = cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
-
-    // --- 1. XỬ LÝ TIKTOK ---
-    if (isTikTok) {
-      const response = await fetch(`https://www.tikwm.com/api/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ url: cleanUrl, hd: "1" }),
-      });
-      const resData = await response.json();
-
-      return NextResponse.json({
-        title: resData.data?.title || "TikTok Video",
-        thumbnail: resData.data?.cover || "",
-        isTikTok: true,
-        formats: [
-          {
-            id: 'tk-video',
-            quality: 'Video No Logo (Server VIP)',
-            // Gửi link gốc kèm flag để Backend Download biết cần dùng yt-dlp
-            downloadUrl: cleanUrl + "#video" 
-          },
-          {
-            id: 'tk-audio',
-            quality: 'Nhạc nền (MP3)',
-            downloadUrl: cleanUrl + "#mp3" 
-          }
-        ]
-      });
+    
+    // Kiểm tra nếu không phải link TikTok thì báo lỗi luôn
+    if (!cleanUrl.includes('tiktok.com')) {
+      return NextResponse.json({ error: "Hiện tại hệ thống chỉ hỗ trợ TikTok!" }, { status: 400 });
     }
 
-    // --- 2. XỬ LÝ YOUTUBE (GIỮ NGUYÊN 100%) ---
-    if (isYouTube) {
-      const ytId = extractYoutubeId(cleanUrl);
-      if (!ytId) return NextResponse.json({ error: "Link không hợp lệ" }, { status: 400 });
+    // --- XỬ LÝ TIKTOK QUA API TIKWM ---
+    const response = await fetch(`https://www.tikwm.com/api/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ url: cleanUrl, hd: "1" }),
+    });
+    
+    const resData = await response.json();
 
-      return NextResponse.json({
-        title: "YouTube Video Ready",
-        thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
-        isTikTok: false,
-        formats: [
-          {
-            id: 'yt-1080',
-            quality: 'Video Full HD (1080p)',
-            downloadUrl: `https://api.vevioz.com/api/button/videos/${ytId}`
-          },
-          {
-            id: 'yt-720',
-            quality: 'Video HD (720p)',
-            downloadUrl: `https://api.vevioz.com/api/button/videos/${ytId}`
-          },
-          {
-            id: 'yt-mp3', 
-            quality: 'Tải Nhạc MP3',
-            downloadUrl: `https://api.vevioz.com/api/button/mp3/${ytId}`
-          }
-        ]
-      });
+    if (!resData.data) {
+      return NextResponse.json({ error: "Không tìm thấy video hoặc link sai!" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Nền tảng chưa hỗ trợ!" }, { status: 400 });
+    const videoData = resData.data;
+
+    return NextResponse.json({
+      title: videoData.title || "TikTok Video",
+      thumbnail: videoData.cover || "",
+      isTikTok: true,
+      // Trả về link trực tiếp để API Download chỉ việc fetch là xong, không cần yt-dlp
+      downloadUrl: videoData.play, // Link video no logo chính
+      formats: [
+        {
+          id: 'tk-video-hd',
+          quality: 'Video No Logo (HD)',
+          downloadUrl: videoData.hdplay || videoData.play
+        },
+        {
+          id: 'tk-video-watermark',
+          quality: 'Video có Logo',
+          downloadUrl: videoData.wmplay
+        },
+        {
+          id: 'tk-audio',
+          quality: 'Nhạc nền (MP3)',
+          downloadUrl: videoData.music
+        }
+      ]
+    });
+
   } catch (err: any) {
     console.error("Analyze Error:", err.message);
     return NextResponse.json({ error: "Lỗi kết nối server" }, { status: 500 });
   }
-}
-
-function extractYoutubeId(url: string) {
-  const regExp = /^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[1]?.length === 11) ? match[1] : null;
 }

@@ -129,7 +129,6 @@ export default function GoldPricePage() {
 
         <div className="mt-20 text-center text-gray-600 text-[10px] border-t border-white/5 pt-10 uppercase tracking-[0.4em]">
           <p className="mb-2">Dữ liệu được cập nhật tự động từ hệ thống Ultra-DL</p>
-          <p className="font-mono text-yellow-500/50">Nguồn: TradingView Real-time & Domestic Gold APIs</p>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@
     "postinstall": "node node_modules/yt-dlp-exec/scripts/postinstall.js"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.6",
     "axios": "^1.16.0",
     "cheerio": "^1.2.0",
     "execa": "^9.6.1",
